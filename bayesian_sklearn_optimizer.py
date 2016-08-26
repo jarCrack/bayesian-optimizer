@@ -13,7 +13,7 @@ class BayesianSkLearnOptimizer:
 
     def evaluate(self,hyperparams):
         print(hyperparams)
-        hyps={c:np.exp(hyperparams[0,i]) for i,c in enumerate(self.hyp_names)}
+        hyps={c:int(hyperparams[0,i]) for i,c in enumerate(self.hyp_names)}
         self.trained_model=self.model(**hyps)
         self.trained_model.fit(self.X_train,self.y_train)
 
@@ -21,7 +21,9 @@ class BayesianSkLearnOptimizer:
         plt.plot(self.X_test, self.trained_model.predict(self.X_test), '.')
         plt.show()
 
-        return mean_absolute_error(self.y_test,self.trained_model.predict(self.X_test))
+        err=mean_absolute_error(self.y_test,self.trained_model.predict(self.X_test))
+        print(err)
+        return err
         #return self.trained_model.score(self.X_test,self.y_test)
     def __init__(self, sklearn_model, params_to_tune, training_and_test_data, custom_validation=None,iteration_callback=None):
         """
@@ -56,6 +58,11 @@ if __name__ == "__main__":
                        {'name': 'epsilon', 'type': 'continuous', 'domain': (-12., -2.)},
                        {'name': 'gamma', 'type': 'continuous', 'domain': (-12., -2.)}]
 
+    from sklearn.ensemble import RandomForestRegressor
+    sklearn_model_2=RandomForestRegressor
+
+    hyperparameters = [{'name': 'n_estimators', 'type': 'discrete', 'domain': (1, 100)},
+                       {'name': 'max_depth', 'type': 'discrete', 'domain': (1, 100)}]
     data = GPy.util.datasets.olympic_marathon_men()
     X = data['X']
     y = data['Y']
@@ -63,7 +70,7 @@ if __name__ == "__main__":
     data = train_test_split(X, y, test_size=0.33, random_state=42)
     X_train, X_test, y_train, y_test = data
 
-    optimizer = BayesianSkLearnOptimizer(sklearn_model, hyperparameters, data)
+    optimizer = BayesianSkLearnOptimizer(sklearn_model_2, hyperparameters, data)
     model=optimizer.optimize_model()
 
     plt.plot(X_test, y_test, 'x')
