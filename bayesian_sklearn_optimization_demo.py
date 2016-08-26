@@ -62,3 +62,18 @@ opt = GPyOpt.methods.BayesianOptimization(f = fit_svr_val,            # function
 #it may take a few seconds
 opt.run_optimization(max_iter=50)
 opt.plot_convergence()
+
+x_best = np.exp(opt.X[np.argmin(opt.Y)])
+print("The best parameters obtained: C="+str(x_best[0])+", epilson="+str(x_best[1])+", gamma="+str(x_best[2]))
+svr = svm.SVR(C=x_best[0], epsilon=x_best[1],gamma=x_best[2])
+svr.fit(X_train,Y_train)
+Y_train_pred = svr.predict(X_train)
+Y_test_pred = svr.predict(X_test)
+
+plot(X_train,Y_train_pred,'b',label='pred-train')
+plot(X_test,Y_test_pred,'g',label='pred-test')
+plot(X_train,Y_train,'rx',label='ground truth')
+plot(X_test,Y_test,'rx')
+legend(loc='best')
+show()
+print("RMSE = "+str(np.sqrt(np.square(Y_test_pred-Y_test).mean())))
