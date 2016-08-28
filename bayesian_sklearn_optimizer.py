@@ -49,35 +49,46 @@ class BayesianSkLearnOptimizer:
     def optimize_model(self):
 
         result={}
-
+        best_score=1e3
+        best_model=None
 
         for el in product(*self.categories):
             self.categories = {c["name"]: el[i] for i, c in enumerate(self.categorical_hyperparameters)}
             self.problem = GPyOpt.methods.BayesianOptimization(f=self.validation_method,
                                                                domain=self.numeric_hyperparameters,
-                                                               acquisition_type="LCB", acquisition_weight=0.1)
+                                                               acquisition_type="EI", acquisition_weight=0.1)
 
-            self.problem.run_optimization(max_iter=4)
+            self.problem.run_optimization(max_iter=20)
             self.problem.plot_convergence()
-            result[el]={'score':self.problem.fx_opt[0],'model:':copy.copy(self.trained_model)}
+
+            cur_score=self.problem.fx_opt[0]
+            model_copy=copy.copy(self.trained_model)
+
+            result[el]={'score':cur_score,'model:':model_copy}
+            if cur_score<best_score:
+                best_score=cur_score
+                best_model=model_copy
 
         p = pprint.PrettyPrinter()
         p.pprint(result)
 
-        return self.trained_model
+        return best_model
 
 
 if __name__ == "__main__":
     sklearn_model = svm.SVR
 
-    hyperparameters = [{'name': 'C', 'type': 'continuous', 'domain': (0., 7.)},
+    hyperparameters = [{'name': 'C', 'type': 'continuous', 'domain': (-7., 7.)},
                        {'name': 'epsilon', 'type': 'continuous', 'domain': (-12., -2.)},
                        {'name': 'gamma', 'type': 'continuous', 'domain': (-12., -2.)},
-                       {'name': 'kernel', 'type': 'categorical', 'choice': ('rbf', 'linear')}]
+                       {'name': 'tol', 'type': 'continuous', 'domain': (-5, 0)},
+                       {'name': 'kernel', 'type': 'categorical', 'choice': ('rbf', 'linear','poly','sigmoid')}]
 
     sklearn_model2=RandomForestRegressor
-    hyperparameters2 = [{'name': 'n_estimators', 'type': 'discrete', 'domain': (1, 100.)},
+    hyperparameters2 = [{'name': 'n_estimators', 'type': 'discrete', 'domain': (10, 100.)},
+                        {'name': 'max_depth', 'type': 'discrete', 'domain': (1, 100)},
                         {'name': 'max_features', 'type': 'categorical', 'choice':('sqrt','log2','auto')}]
+
     data = GPy.util.datasets.olympic_marathon_men()
 
     X = data['X']
