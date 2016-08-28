@@ -2,16 +2,19 @@ import GPy
 import GPyOpt
 import numpy as np
 from sklearn import svm
-from numpy.random import seed
+from sklearn.ensemble import RandomForestRegressor
 import matplotlib.pyplot as plt
 from sklearn.cross_validation import train_test_split
 from sklearn.metrics import mean_absolute_error
 from itertools import product
+import pprint
+import copy
 
-seed(12345)
+np.random.seed(12345)
 
 
 class BayesianSkLearnOptimizer:
+
     def evaluate(self, hyperparams):
         hyps = {c["name"]: np.exp(hyperparams[0, i]) for i, c in enumerate(self.numeric_hyperparameters) if
                 c["type"] is not "categorical"}
@@ -19,7 +22,6 @@ class BayesianSkLearnOptimizer:
         self.trained_model.fit(self.X_train, self.y_train)
 
         err = mean_absolute_error(self.y_test, self.trained_model.predict(self.X_test))
-        print(err)
         return err
 
     def __init__(self, sklearn_model, params_to_tune, training_and_test_data, custom_validation=None,
@@ -45,6 +47,10 @@ class BayesianSkLearnOptimizer:
         self.validation_method = custom_validation if callable(custom_validation) else lambda x: self.evaluate(x)
 
     def optimize_model(self):
+
+        result={}
+
+
         for el in product(*self.categories):
             self.categories = {c["name"]: el[i] for i, c in enumerate(self.categorical_hyperparameters)}
             self.problem = GPyOpt.methods.BayesianOptimization(f=self.validation_method,
@@ -52,6 +58,11 @@ class BayesianSkLearnOptimizer:
                                                                acquisition_type="LCB", acquisition_weight=0.1)
 
             self.problem.run_optimization(max_iter=4)
+            self.problem.plot_convergence()
+            result[el]={'score':self.problem.fx_opt[0],'model:':copy.copy(self.trained_model)}
+
+        p = pprint.PrettyPrinter()
+        p.pprint(result)
 
         return self.trained_model
 
@@ -64,6 +75,9 @@ if __name__ == "__main__":
                        {'name': 'gamma', 'type': 'continuous', 'domain': (-12., -2.)},
                        {'name': 'kernel', 'type': 'categorical', 'choice': ('rbf', 'linear')}]
 
+    sklearn_model2=RandomForestRegressor
+    hyperparameters2 = [{'name': 'n_estimators', 'type': 'discrete', 'domain': (1, 100.)},
+                        {'name': 'max_features', 'type': 'categorical', 'choice':('sqrt','log2','auto')}]
     data = GPy.util.datasets.olympic_marathon_men()
 
     X = data['X']
